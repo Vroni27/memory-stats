@@ -1,7 +1,7 @@
 use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::MemoryStats;
+use crate::{MemoryStats, RssBreakdown};
 
 #[path = "page_size.rs"]
 mod page_size;
@@ -9,6 +9,7 @@ mod page_size;
 #[cfg(not(feature = "always_use_statm"))]
 const SMAPS: &str = "/proc/self/smaps";
 const STATM: &str = "/proc/self/statm";
+const STATUS: &str = "/proc/self/status";
 
 #[cfg(not(feature = "always_use_statm"))]
 static SMAPS_CHECKED: AtomicBool = AtomicBool::new(false);
@@ -83,6 +84,30 @@ pub fn memory_stats() -> Option<MemoryStats> {
         }
         Err(_) => None,
     }
+}
+
+pub fn rss_breakdown() -> Option<RssBreakdown> {
+    let status_info = fs::read_to_string(STATUS).ok()?;
+
+    let mut rss_anon_kb: Option<usize> = None;
+    let mut rss_file_kb: Option<usize> = None;
+    let mut rss_shmem_kb: Option<usize> = None;
+
+    for line in status_info.lines() {
+        if let Some(rest) = line.strip_prefix("RssAnon:") {
+            rss_anon_kb = Some(scan_int(rest).0);
+        } else if let Some(rest) = line.strip_prefix("RssFile:") {
+            rss_file_kb = Some(scan_int(rest).0);
+        } else if let Some(rest) = line.strip_prefix("RssShmem:") {
+            rss_shmem_kb = Some(scan_int(rest).0);
+        }
+    }
+
+    Some(RssBreakdown {
+        rss_anon: rss_anon_kb? << 10,
+        rss_file: rss_file_kb? << 10,
+        rss_shmem: rss_shmem_kb? << 10,
+    })
 }
 
 /// Extracts a positive integer from a string that

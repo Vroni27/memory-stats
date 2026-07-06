@@ -97,6 +97,22 @@ pub struct MemoryStats {
     pub virtual_mem: usize,
 }
 
+/// Breakdown of the resident set size (RSS) into anonymous, file-backed,
+/// and shared memory portions. Only available on Linux/Android via
+/// `/proc/self/status`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct RssBreakdown {
+    /// Resident anonymous memory (e.g. heap, stack), in bytes.
+    pub rss_anon: usize,
+
+    /// Resident file-backed memory (e.g. mapped files), in bytes.
+    pub rss_file: usize,
+
+    /// Resident shared memory (e.g. SysV shm, tmpfs), in bytes.
+    pub rss_shmem: usize,
+}
+
 /// Returns a snapshot of the the memory used by the
 /// current process.
 ///
@@ -107,4 +123,30 @@ pub struct MemoryStats {
 /// `None` is returned.
 pub fn memory_stats() -> Option<MemoryStats> {
     platform::memory_stats()
+}
+
+/// Returns a breakdown of the resident set size (RSS) into anonymous,
+/// file-backed, and shared memory portions.
+///
+/// This reads `RssAnon`, `RssFile`, and `RssShmem` from `/proc/self/status`.
+///
+/// # Platform Support
+///
+/// This function is only available on Linux and Android (kernel 4.5+).
+/// On all other platforms it returns `None`.
+#[cfg(any(target_os = "linux", target_os = "android"))]
+pub fn rss_breakdown() -> Option<RssBreakdown> {
+    platform::rss_breakdown()
+}
+
+/// Returns a breakdown of the resident set size (RSS) into anonymous,
+/// file-backed, and shared memory portions.
+///
+/// # Platform Support
+///
+/// This function is only available on Linux and Android (kernel 4.5+).
+/// On all other platforms it returns `None`.
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+pub fn rss_breakdown() -> Option<RssBreakdown> {
+    None
 }
