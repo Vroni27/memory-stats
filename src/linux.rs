@@ -111,15 +111,20 @@ pub fn rss_breakdown() -> Option<RssBreakdown> {
 }
 
 /// Extracts a positive integer from a string that
-/// may contain leading spaces and trailing chars.
-/// Returns the extracted number and the index of
-/// the next character in the string.
+/// may contain leading whitespace (spaces or tabs)
+/// and trailing chars. Returns the extracted number
+/// and the index of the next character in the string.
 fn scan_int(string: &str) -> (usize, usize) {
     let mut out = 0;
     let mut idx = 0;
     let mut chars = string.chars().peekable();
-    while let Some(' ') = chars.next_if_eq(&' ') {
-        idx += 1;
+    while let Some(c) = chars.peek() {
+        if *c == ' ' || *c == '\t' {
+            idx += 1;
+            chars.next();
+        } else {
+            break;
+        }
     }
     for n in chars {
         idx += 1;
